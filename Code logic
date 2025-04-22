@@ -1,0 +1,118 @@
+class Photon:
+    def __init__(self, position, velocity, energy):
+        self.position = position  # Current position of the photon
+        self.velocity = velocity  # Velocity of the photon
+        self.energy = energy      # Energy of the photon
+        self.path_length = 0      # Total path length traveled
+        self.transit_time = 0     # Time taken to travel through the tube
+
+################################################################################################################################################################################################################################################################################################
+
+class Obstacle:
+    def __init__(self, position):
+        self.position = position  # Position of the obstacle
+
+################################################################################################################################################################################################################################################################################################
+
+class Tube:
+    def __init__(self, length, width, is_pachinko=False):
+        self.length = length      # Length of the tube
+        self.width = width        # Width of the tube
+        self.is_pachinko = is_pachinko  # Whether the tube is a Pachinko tube
+        self.obstacles = []       # List of obstacles in the tube
+
+    def add_obstacle(self, obstacle):
+        self.obstacles.append(obstacle)
+
+################################################################################################################################################################################################################################################################################################
+
+def setup_simulation():
+    # Define simulation parameters
+    num_photons = 1000
+    tube_length = 100.0
+    tube_width = 10.0
+
+    # Create three tubes
+    vacuum_tube_1 = Tube(tube_length, tube_width, is_pachinko=False)
+    pachinko_tube = Tube(tube_length, tube_width, is_pachinko=True)
+    vacuum_tube_3 = Tube(tube_length, tube_width, is_pachinko=False)
+
+    # Add obstacles to the Pachinko tube
+    for i in range(50):  # Add 50 obstacles
+        obstacle = Obstacle(position=np.random.rand() * tube_width)
+        pachinko_tube.add_obstacle(obstacle)
+
+    # Initialize photons
+    photons = []
+    for _ in range(num_photons):
+        photon = Photon(
+            position=0.0,
+            velocity=np.array([1.0, 0.0]),  # Velocity in the x-direction
+            energy=1.0
+        )
+        photons.append(photon)
+
+    return vacuum_tube_1, pachinko_tube, vacuum_tube_3, photons
+
+################################################################################################################################################################################################################################################################################################
+
+def propagate_photons(tube, photons, time_step):
+    for photon in photons:
+        # Update position based on velocity
+        photon.position += photon.velocity * time_step
+        photon.path_length += np.linalg.norm(photon.velocity) * time_step
+
+        # Check for collisions with obstacles (only in Pachinko tube)
+        if tube.is_pachinko:
+            for obstacle in tube.obstacles:
+                if np.abs(photon.position[1] - obstacle.position) < 1e-2:  # Simplified collision detection
+                    # Handle collision: change direction randomly
+                    photon.velocity[1] = np.random.choice([-1, 1]) * np.random.random()
+                    photon.position[1] = obstacle.position + photon.velocity[1] * 1e-2  # Move photon slightly to avoid sticking
+
+        # Check if photon has exited the tube
+        if photon.position[0] >= tube.length:
+            photon.transit_time = time_step * (photon.position[0] / photon.velocity[0])
+            photon.position[0] = tube.length  # Set to exit position
+
+################################################################################################################################################################################################################################################################################################
+
+def analyze_results(photons):
+    transit_times = []
+    path_lengths = []
+
+    for photon in photons:
+        transit_times.append(photon.transit_time)
+        path_lengths.append(photon.path_length)
+
+    # Calculate average transit time and path length
+    avg_transit_time = np.mean(transit_times)
+    avg_path_length = np.mean(path_lengths)
+
+    return avg_transit_time, avg_path_length
+
+################################################################################################################################################################################################################################################################################################
+
+def main():
+    # Setup simulation
+    vacuum_tube_1, pachinko_tube, vacuum_tube_3, photons = setup_simulation()
+
+    # Simulation parameters
+    time_step = 0.1
+    total_time = 100.0
+    num_steps = int(total_time / time_step)
+
+    # Simulate photon propagation through each tube
+    for tube in [vacuum_tube_1, pachinko_tube, vacuum_tube_3]:
+        for step in range(num_steps):
+            propagate_photons(tube, photons, time_step)
+
+    # Analyze results
+    avg_transit_time, avg_path_length = analyze_results(photons)
+    print(f"Average Transit Time: {avg_transit_time}")
+    print(f"Average Path Length: {avg_path_length}")
+
+if __name__ == "__main__":
+    main()
+
+
